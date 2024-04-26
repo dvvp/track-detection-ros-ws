@@ -16,7 +16,7 @@ input_shape = [1, 3, preview_img_height, preview_img_width]
 output0_shape = model_data["shapes"]["output0"]
 output1_shape = model_data["shapes"]["output1"]
 
-path_to_yolo_blob = "models/best320x192v2.blob"
+path_to_yolo_blob = "helpers/models/best320x192v2.blob"
 
 
 def main():
