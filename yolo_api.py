@@ -12,7 +12,7 @@ class Segment:
         input_shape=[1, 3, 192, 320],
         input_height=192,
         input_width=320,
-        conf_thres=0.7,
+        conf_thres=0.9,
         iou_thres=0.5,
         num_masks=32,
     ):
@@ -147,35 +147,31 @@ class Segment:
             image, self.boxes, self.scores, self.class_ids, mask_alpha
         )
 
-    def draw_masks(self, image, draw_scores=True, mask_alpha=0.5):
-        return draw_detections(
-            image,
-            self.boxes,
-            self.scores,
-            self.class_ids,
-            mask_alpha,
-            mask_maps=self.mask_maps,
-        )
-    
-    # def draw_masks(self, image, draw_scores=True, mask_alpha=0.5):
-    #     for i in range(len(self.boxes)):
-    #         contours, _ = cv2.findContours(self.mask_maps[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #         cv2.polylines(image, contours, True, (0, 255, 0), thickness=2)
-    #     return image
+    def calculate_centroid(self, mask_map):
+        contours, _ = cv2.findContours(mask_map.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        max_contour_area = 0
+        max_contour_index = -1
+        for idx, contour in enumerate(contours):
+            area = cv2.contourArea(contour)
+            if area > max_contour_area:
+                max_contour_area = area
+                max_contour_index = idx
+        if max_contour_index != -1:
+            M = cv2.moments(contours[max_contour_index])
+            if M["m00"] != 0:
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                return (cX, cY)
+        return None
 
-    # def draw_masks(self, image, draw_scores=True, mask_alpha=0.5):
-    #     for i in range(len(self.boxes)):
-    #         contours, _ = cv2.findContours(self.mask_maps[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #         cv2.polylines(image, contours, True, (0, 255, 0), thickness=2)
-            
-    #         # Calculate center of the mask
-    #         M = cv2.moments(contours[0])
-    #         if M["m00"] != 0:
-    #             cX = int(M["m10"] / M["m00"])
-    #             cY = int(M["m01"] / M["m00"])
-    #             # Draw a circle at the center of the mask
-    #             cv2.circle(image, (cX, cY), 5, (0, 0, 255), -1)
-    #     return image
+    def draw_masks(self, image, draw_scores=True, mask_alpha=0.5):
+        for i in range(len(self.boxes)):
+            centroid = self.calculate_centroid(self.mask_maps[i])
+            if centroid is not None:
+                contours, _ = cv2.findContours(self.mask_maps[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                cv2.polylines(image, contours, True, (0, 255, 0), thickness=2)
+                cv2.circle(image, centroid, 5, (0, 0, 255), -1)
+        return image
 
     @staticmethod
     def rescale_boxes(boxes, input_shape, image_shape):
@@ -187,5 +183,4 @@ class Segment:
         boxes *= np.array(
             [image_shape[1], image_shape[0], image_shape[1], image_shape[0]]
         )
-
         return boxes
