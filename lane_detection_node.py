@@ -170,19 +170,14 @@ class Segment:
         for i in range(len(self.boxes)):
             centroid_data = self.calculate_centroid(self.mask_maps[i])
             if centroid_data is not None:
-                centroid_x, centroid_y, x_error = centroid_data
+                cX, cY, x_error = centroid_data
                 contours, _ = cv2.findContours(self.mask_maps[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.polylines(image, contours, True, (0, 255, 0), thickness=2)
-
-                # Calculate center of the image
-                center_x = self.img_width // 2
-                
-                cv2.circle(image, (centroid_x, centroid_y), 5, (0, 0, 255), -1)
-                # Draw line from centroid to center of the image
-                cv2.line(image, (centroid_x, centroid_y), (center_x, centroid_y), (255, 0, 0), 2)
+                cv2.circle(image, (cX, cY), 5, (0, 0, 255), -1)
+                # Draw the error line
+                cv2.line(image, (cX, cY), (cX + x_error, cY), (255, 0, 0), 2)
         return image
 
-    
     @staticmethod
     def rescale_boxes(boxes, input_shape, image_shape):
         # Rescale boxes to original image dimensions
