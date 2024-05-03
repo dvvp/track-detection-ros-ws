@@ -166,11 +166,11 @@ class Segment:
                 return (cX, cY, x_error)
         return None
 
-    def draw_masks(self, image, draw_scores=True, mask_alpha=0.5):
+    def draw_masks(self, image):
         for i in range(len(self.boxes)):
             centroid_data = self.calculate_centroid(self.mask_maps[i])
             if centroid_data is not None:
-                centroid_x, centroid_y, x_error = centroid_data
+                centroid_x, centroid_y, error_x = centroid_data
                 contours, _ = cv2.findContours(self.mask_maps[i].astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cv2.polylines(image, contours, True, (0, 255, 0), thickness=2)
 
@@ -180,8 +180,8 @@ class Segment:
                 cv2.circle(image, (centroid_x, centroid_y), 5, (0, 0, 255), -1)
                 # Draw line from centroid to center of the image
                 cv2.line(image, (centroid_x, centroid_y), (center_x, centroid_y), (255, 0, 0), 2)
-        return image
-
+                return image, error_x
+        return image, None
     
     @staticmethod
     def rescale_boxes(boxes, input_shape, image_shape):

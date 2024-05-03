@@ -75,7 +75,7 @@ def main():
                         )
                         yoloseg.prepare_input_for_oakd(frame.shape[:2])
                         yoloseg.segment_objects_from_oakd(output0, output1)
-                        frame = yoloseg.draw_masks(frame.copy())
+                        frame, _ = yoloseg.draw_masks(frame.copy())
 
                 cv2.imshow("Output", frame)
                 
