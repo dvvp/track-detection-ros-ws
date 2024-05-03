@@ -6,6 +6,7 @@ import cv2
 from cv_bridge import CvBridge
 import numpy as np
 import os
+from ament_index_python import get_package_share_directory
 from ultralytics import YOLO
 import base64
 
@@ -16,7 +17,7 @@ NODE_NAME = 'lane_detection_node'
 CAMERA_TOPIC_NAME = '/oak/rgb/image_raw'
 CENTROID_TOPIC_NAME = '/centroid'
 
-MODEL_PATH = 'models/best320x192v2.pt'
+MODEL_PATH = os.path.join(get_package_share_directory("lane_detection"), "models/best320x192v2.pt")
 
 
 class LaneDetection(Node):
@@ -27,6 +28,7 @@ class LaneDetection(Node):
         self.centroid_error = Float32()
         self.camera_subscriber = self.create_subscription(Image, CAMERA_TOPIC_NAME, self.locate_centroid, 10)
         self.camera_subscriber
+        self.bridge = CvBridge()
 
         # Initialize model
         self.model = YOLO(MODEL_PATH)
@@ -39,22 +41,22 @@ class LaneDetection(Node):
         # Find contour with the highest confidence
         results = self.model.predict(frame, conf=0.9)
         conf = results[0].boxes.conf.tolist()
-        max_conf_index = np.argmax(conf)
+        if len(conf) != 0:
+            max_conf_index = np.argmax(conf)
 
-        # Find centroid
-        coords_xy = results[max_conf_index].masks.xy
-        coords_x = coords_xy[0][:, 0]
-        centroid_x = np.mean(coords_x)
+            # Find centroid
+            coords_xy = results[max_conf_index].masks.xy
+            coords_x = coords_xy[0][:, 0]
+            centroid_x = np.mean(coords_x)
 
-        # Find horizontal center of image
-        _, width, _ = frame.shape
-        center_x = width // 2
+            # Find horizontal center of image
+            _, width, _ = frame.shape
+            center_x = width // 2
 
-        # Compute centroid error and publish
-        error_x = centroid_x - center_x
-        self.centroid_error.data = error_x
-        self.centroid_error_publisher.publish(self.centroid_error)
-
+            # Compute centroid error and publish
+            error_x = centroid_x - center_x
+            self.centroid_error.data = error_x
+            self.centroid_error_publisher.publish(self.centroid_error)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -75,4 +77,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-    
