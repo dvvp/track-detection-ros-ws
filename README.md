@@ -5,7 +5,7 @@ Assuming ROS2 is sourced in your terminal
 To build:
 ```
 # clone the repo
-cd track_detection_ros_ws
+cd dsc190-track-detection
 colcon build
 ```
 
