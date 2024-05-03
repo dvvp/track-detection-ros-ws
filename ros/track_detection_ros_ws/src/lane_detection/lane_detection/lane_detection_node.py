@@ -6,7 +6,7 @@ import cv2
 from cv_bridge import CvBridge
 import numpy as np
 import os
-from ultralytics import YOLO
+from roboflow import Roboflow
 import base64
 
 # Nodes in this program
@@ -15,8 +15,6 @@ NODE_NAME = 'lane_detection_node'
 # Topics subcribed/published to in this program
 CAMERA_TOPIC_NAME = '/oak/rgb/image_raw'
 CENTROID_TOPIC_NAME = '/centroid'
-
-MODEL_PATH = 'helpers/models/best320x192v2.pt'
 
 
 class LaneDetection(Node):
@@ -28,26 +26,38 @@ class LaneDetection(Node):
         self.camera_subscriber = self.create_subscription(Image, CAMERA_TOPIC_NAME, self.locate_centroid, 10)
         self.camera_subscriber
 
-        # Initialize model
-        self.model = YOLO(MODEL_PATH)
-
+        # Initialize Roboflow
+        self.rf = Roboflow(api_key="XG3i4cX7XdFeVFrfNqy5")
+        self.project = self.rf.workspace().project("dsc190-road-detection")
+        self.model = self.project.version("11").model
 
     def locate_centroid(self, data):
         # Image processing from rosparams
         frame = self.bridge.imgmsg_to_cv2(data)
+        _, jpg_image = cv2.imencode('.jpg', frame)
+        jpg_bytes = jpg_image.tobytes()
 
-        # Find contour with the highest confidence
-        results = self.model.predict(frame, conf=0.9)
-        conf = results[0].boxes.conf.tolist()
-        max_conf_index = np.argmax(conf)
+        # Load mask
+        prediction = self.model.predict(jpg_bytes)
+        prediction_json = prediction.json()
+        mask = prediction_json['predictions'][0]['segmentation_mask']
 
-        # Find centroid
-        coords_xy = results[max_conf_index].masks.xy
-        coords_x = coords_xy[0][:, 0]
-        centroid_x = np.mean(coords_x)
+        # Decode base64 string to binary
+        mask_bytes = base64.b64decode(mask)
+        mask_array = np.frombuffer(mask_bytes, dtype=np.uint8)
 
-        # Find horizontal center of image
-        _, width, _ = frame.shape
+        # Decode the mask image
+        mask = cv2.imdecode(mask_array, cv2.IMREAD_UNCHANGED)
+
+        # Convert to binary mask
+        binary_mask = (mask[:, :, 0] == 1).astype(np.uint8)
+
+        # Compute moments to find centroid
+        moments = cv2.moments(binary_mask)
+        centroid_x = int(moments['m10'] / moments['m00'])
+
+        # Find image center
+        _, width, _ = jpg_image.shape
         center_x = width // 2
 
         # Compute centroid error and publish
