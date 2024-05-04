@@ -1,9 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32, Int32, Int32MultiArray
+from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
-import time
-import os
 
 NODE_NAME = 'lane_guidance_node'
 CENTROID_TOPIC_NAME = '/centroid'
@@ -32,25 +30,25 @@ class PathPlanner(Node):
                 ('max_right_steering', 1.0),
                 ('max_left_steering', -1.0)
             ])
-        self.Kp = self.get_parameter('Kp_steering').value # between [0,1]
-        self.Ki = self.get_parameter('Ki_steering').value # between [0,1]
-        self.Kd = self.get_parameter('Kd_steering').value # between [0,1]
-        self.error_threshold = self.get_parameter('error_threshold').value # between [0,1]
-        self.zero_throttle = self.get_parameter('zero_throttle').value # between [-1,1] but should be around 0
-        self.max_throttle = self.get_parameter('max_throttle').value # between [-1,1]
-        self.min_throttle = self.get_parameter('min_throttle').value # between [-1,1]
-        self.max_right_steering = self.get_parameter('max_right_steering').value # between [-1,1]
-        self.max_left_steering = self.get_parameter('max_left_steering').value # between [-1,1]
+        self.Kp = self.get_parameter('Kp_steering').value  # between [0,1]
+        self.Ki = self.get_parameter('Ki_steering').value  # between [0,1]
+        self.Kd = self.get_parameter('Kd_steering').value  # between [0,1]
+        self.error_threshold = self.get_parameter('error_threshold').value  # between [0,1]
+        self.zero_throttle = self.get_parameter('zero_throttle').value  # between [-1,1] but should be around 0
+        self.max_throttle = self.get_parameter('max_throttle').value  # between [-1,1]
+        self.min_throttle = self.get_parameter('min_throttle').value  # between [-1,1]
+        self.max_right_steering = self.get_parameter('max_right_steering').value  # between [-1,1]
+        self.max_left_steering = self.get_parameter('max_left_steering').value  # between [-1,1]
 
         # initializing PID control
-        self.Ts = float(1/20)
-        self.ek = 0 # current error
-        self.ek_1 = 0 # previous error
-        self.proportional_error = 0 # proportional error term for steering
-        self.derivative_error = 0 # derivative error term for steering
-        self.integral_error = 0 # integral error term for steering
+        self.Ts = float(1 / 20)
+        self.ek = 0  # current error
+        self.ek_1 = 0  # previous error
+        self.proportional_error = 0  # proportional error term for steering
+        self.derivative_error = 0  # derivative error term for steering
+        self.integral_error = 0  # integral error term for steering
         self.integral_max = 1E-8
-        
+
         self.get_logger().info(
             f'\nKp_steering: {self.Kp}'
             f'\nKi_steering: {self.Ki}'
@@ -68,17 +66,10 @@ class PathPlanner(Node):
         self.ek = data.data
 
         # Throttle gain scheduling (function of error)
-        self.inf_throttle = self.min_throttle - (self.min_throttle - self.max_throttle) / (1 - self.error_threshold)
-        throttle_float_raw = ((self.min_throttle - self.max_throttle)  / (1 - self.error_threshold)) * abs(self.ek) + self.inf_throttle
-        throttle_float = self.clamp(throttle_float_raw, self.max_throttle, self.min_throttle)
+        throttle_float = self.zero_throttle
 
-        # Steering PID terms
-        self.proportional_error = self.Kp * self.ek
-        self.derivative_error = self.Kd * (self.ek - self.ek_1) / self.Ts
-        self.integral_error += self.Ki * self.ek * self.Ts
-        self.integral_error = self.clamp(self.integral_error, self.integral_max)
-        steering_float_raw = self.proportional_error + self.derivative_error + self.integral_error
-        steering_float = self.clamp(steering_float_raw, self.max_right_steering, self.max_left_steering)
+        # Steering based on error
+        steering_float = self.ek * (self.max_left_steering - self.max_right_steering)
 
         # Publish values
         try:
@@ -95,15 +86,15 @@ class PathPlanner(Node):
             self.twist_publisher.publish(self.twist_cmd)
 
     def clamp(self, value, upper_bound, lower_bound=None):
-        if lower_bound==None:
-            lower_bound = -upper_bound # making lower bound symmetric about zero
+        if lower_bound == None:
+            lower_bound = -upper_bound  # making lower bound symmetric about zero
         if value < lower_bound:
             value_c = lower_bound
         elif value > upper_bound:
             value_c = upper_bound
         else:
             value_c = value
-        return value_c 
+        return value_c
 
 
 def main(args=None):
