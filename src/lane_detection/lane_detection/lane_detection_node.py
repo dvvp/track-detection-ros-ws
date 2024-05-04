@@ -58,11 +58,6 @@ class LaneDetection(Node):
             self.centroid_error.data = error_x
             self.centroid_error_publisher.publish(self.centroid_error)
 
-            # Compute centroid error and publish
-            error_x = centroid_x - center_x
-            self.centroid_error.data = error_x
-            self.centroid_error_publisher.publish(self.centroid_error)
-
 def main(args=None):
     rclpy.init(args=args)
     centroid_publisher = LaneDetection()
