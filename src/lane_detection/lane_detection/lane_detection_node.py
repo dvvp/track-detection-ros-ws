@@ -39,18 +39,20 @@ class LaneDetection(Node):
         frame = self.bridge.imgmsg_to_cv2(data)
 
         # Find contour with the highest confidence
-        results = self.model.predict(frame, conf=0.9)
+        results = self.model.predict(frame, conf=0.7)
         conf = results[0].boxes.conf.tolist()
+
         if len(conf) != 0:
             max_conf_index = np.argmax(conf)
 
             # Find centroid
             coords_xy = results[max_conf_index].masks.xy
             coords_x = coords_xy[0][:, 0]
-            centroid_x = np.mean(coords_x)
+            centroid_x = (np.min(coords_x) + np.max(coords_x)) / 2
+
+            _, width, _ = frame.shape
 
             # Find horizontal center of image
-            _, width, _ = frame.shape
             center_x = width // 2
 
             # Compute centroid error and publish
@@ -58,20 +60,6 @@ class LaneDetection(Node):
             self.centroid_error.data = error_x
             self.centroid_error_publisher.publish(self.centroid_error)
 
-            # # Draw centroid and distance
-            # frame_with_centroid = frame.copy()
-            # cv2.circle(frame_with_centroid, (int(centroid_x), frame.shape[0] // 2), 5, (0, 255, 0), -1)
-            # cv2.line(frame_with_centroid, (int(centroid_x), frame.shape[0] // 2), (center_x, frame.shape[0] // 2), (255, 0, 0), 2)
-            # cv2.putText(frame_with_centroid, f"Error: {error_x:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            
-            # # Display the frame with centroid and distance
-            # cv2.imshow("Frame with Centroid", frame_with_centroid)
-            # cv2.waitKey(1)
-
-            # Compute centroid error and publish
-            error_x = centroid_x - center_x
-            self.centroid_error.data = error_x
-            self.centroid_error_publisher.publish(self.centroid_error)
 
 def main(args=None):
     rclpy.init(args=args)
