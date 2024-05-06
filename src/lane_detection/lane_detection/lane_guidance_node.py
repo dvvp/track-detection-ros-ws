@@ -8,29 +8,34 @@ import os
 NODE_NAME = 'lane_guidance_node'
 CENTROID_TOPIC_NAME = '/centroid'
 ACTUATOR_TOPIC_NAME = '/cmd_vel'
+CONTROL_TOPIC_NAME = 'lgsvl/control'
 
 
 class PathPlanner(Node):
     def __init__(self):
         super().__init__(NODE_NAME)
         self.twist_publisher = self.create_publisher(Twist, ACTUATOR_TOPIC_NAME, 10)
+        self.twist_publisher
         self.twist_cmd = Twist()
         self.centroid_subscriber = self.create_subscription(Float32, CENTROID_TOPIC_NAME, self.controller, 10)
         self.centroid_subscriber
+        self.control_publisher = self.create_publisher(lgsvl_msgs/VehicleControlData, CONTROL_TOPIC_NAME, 10)
+        self.control_publisher
+        self.svl_command = lgsvl_msgs/VehicleControlData()
 
         # Default actuator values
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('Kp_steering', 1),
-                ('Ki_steering', 0),
+                ('Kp_steering', 0.001),
+                ('Ki_steering', 0.001),
                 ('Kd_steering', 0),
                 ('error_threshold', 0.15),
                 ('zero_throttle',0.0),
                 ('max_throttle', 0.2),
                 ('min_throttle', 0.1),
-                ('max_right_steering', 1.0),
-                ('max_left_steering', -1.0)
+                ('max_right_steering', 0.3),
+                ('max_left_steering', -0.3)
             ])
         self.Kp = self.get_parameter('Kp_steering').value # between [0,1]
         self.Ki = self.get_parameter('Ki_steering').value # between [0,1]
@@ -62,6 +67,7 @@ class PathPlanner(Node):
             f'\nmax_right_steering: {self.max_right_steering}'
             f'\nmax_left_steering: {self.max_left_steering}'
         )
+  
 
     def controller(self, data):
         # setting up PID control
@@ -85,7 +91,10 @@ class PathPlanner(Node):
             # publish control signals
             self.twist_cmd.angular.z = steering_float
             self.twist_cmd.linear.x = throttle_float
-            self.twist_publisher.publish(self.twist_cmd)
+            # self.twist_publisher.publish(self.twist_cmd)
+            self.svl_command.acceleration_pct = throttle_float
+            self.svl_command.target_wheel_angle = steering_float
+            self.control_publisher.publish(self.svl_command)
 
             # shift current time and error values to previous values
             self.ek_1 = self.ek
@@ -103,7 +112,7 @@ class PathPlanner(Node):
             value_c = upper_bound
         else:
             value_c = value
-        return value_c 
+        return value_c
 
 
 def main(args=None):
