@@ -1,14 +1,16 @@
+import lgsvl_msgs.msg
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32, Int32, Int32MultiArray
 from geometry_msgs.msg import Twist
 import time
 import os
+import lgsvl_msgs
 
 NODE_NAME = 'lane_guidance_node'
 CENTROID_TOPIC_NAME = '/centroid'
 ACTUATOR_TOPIC_NAME = '/cmd_vel'
-CONTROL_TOPIC_NAME = 'lgsvl/control'
+CONTROL_TOPIC_NAME = '/testing/lgsvl/control'
 
 
 class PathPlanner(Node):
@@ -19,9 +21,9 @@ class PathPlanner(Node):
         self.twist_cmd = Twist()
         self.centroid_subscriber = self.create_subscription(Float32, CENTROID_TOPIC_NAME, self.controller, 10)
         self.centroid_subscriber
-        self.control_publisher = self.create_publisher(lgsvl_msgs/VehicleControlData, CONTROL_TOPIC_NAME, 10)
+        self.control_publisher = self.create_publisher(lgsvl_msgs.msg.VehicleControlData, CONTROL_TOPIC_NAME, 10)
         self.control_publisher
-        self.svl_command = lgsvl_msgs/VehicleControlData()
+        self.svl_command = lgsvl_msgs.msg.VehicleControlData()
 
         # Default actuator values
         self.declare_parameters(
