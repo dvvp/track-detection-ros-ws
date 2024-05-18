@@ -6,11 +6,13 @@ from geometry_msgs.msg import Twist
 import time
 import os
 import lgsvl_msgs
+from race_msgs.msg import VehicleControlCommand
 
 NODE_NAME = 'lane_guidance_node'
-CENTROID_TOPIC_NAME = '/centroid'
+CENTROID_TOPIC_NAME = '/centroid_error'
 ACTUATOR_TOPIC_NAME = '/cmd_vel'
-CONTROL_TOPIC_NAME = '/testing/lgsvl/control'
+# CONTROL_TOPIC_NAME = '/testing/lgsvl/control'
+CONTROL_TOPIC_NAME = '/auto/raw_command'
 
 
 class PathPlanner(Node):
@@ -21,23 +23,23 @@ class PathPlanner(Node):
         self.twist_cmd = Twist()
         self.centroid_subscriber = self.create_subscription(Float32, CENTROID_TOPIC_NAME, self.controller, 10)
         self.centroid_subscriber
-        self.control_publisher = self.create_publisher(lgsvl_msgs.msg.VehicleControlData, CONTROL_TOPIC_NAME, 10)
+        self.control_publisher = self.create_publisher(VehicleControlCommand, CONTROL_TOPIC_NAME, 10)
         self.control_publisher
-        self.svl_command = lgsvl_msgs.msg.VehicleControlData()
+        self.vehicle_control_command = VehicleControlCommand()
 
         # Default actuator values
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('Kp_steering', 0.001),
-                ('Ki_steering', 0.001),
-                ('Kd_steering', 0),
+                ('Kp_steering', 0.05),
+                ('Ki_steering', 0),
+                ('Kd_steering', 0.1),
                 ('error_threshold', 0.15),
                 ('zero_throttle',0.0),
                 ('max_throttle', 0.2),
                 ('min_throttle', 0.1),
-                ('max_right_steering', 0.3),
-                ('max_left_steering', -0.3)
+                ('max_right_steering', 0.3),  # Max is around 0.3
+                ('max_left_steering', -0.3)  # Min is around -0.3
             ])
         self.Kp = self.get_parameter('Kp_steering').value # between [0,1]
         self.Ki = self.get_parameter('Ki_steering').value # between [0,1]
@@ -94,9 +96,10 @@ class PathPlanner(Node):
             self.twist_cmd.angular.z = steering_float
             self.twist_cmd.linear.x = throttle_float
             # self.twist_publisher.publish(self.twist_cmd)
-            self.svl_command.acceleration_pct = throttle_float
-            self.svl_command.target_wheel_angle = steering_float
-            self.control_publisher.publish(self.svl_command)
+            self.vehicle_control_command.accelerator_cmd = throttle_float * 100
+            self.vehicle_control_command.steering_cmd = steering_float
+            print(self.vehicle_control_command)
+            self.control_publisher.publish(self.vehicle_control_command)
 
             # shift current time and error values to previous values
             self.ek_1 = self.ek
