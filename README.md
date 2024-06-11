@@ -72,7 +72,7 @@ For track detection we will be focusing on segmentation instead of object detect
 
 It is also important that we differentiate between the two types of segmentation: instance segmentation and semantic segmentation. Instance segmentation is able to distinguish between separate instances of the same class, while semantic segmentation does not. Although it is more computationally expensive, we will be using instance segmentation since it offers support for more models.
 
-![image](instance-vs-semantic.png)
+![image](media/instance-vs-semantic.png)
 
 Source: https://www.folio3.ai/blog/semantic-segmentation-vs-instance-segmentation/
 
